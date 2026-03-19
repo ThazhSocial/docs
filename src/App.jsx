@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Routes, Route, NavLink, useNavigate, useLocation, Navigate } from 'react-router-dom'
+import { Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import HomePage from './pages/HomePage'
-import PostsPage from './pages/PostsPage'
-import UsersPage from './pages/UsersPage'
-import MessagesPage from './pages/MessagesPage'
-import SocialPage from './pages/SocialPage'
 import OAuthPage from './pages/OAuthPage'
 import ShareKitPage from './pages/ShareKitPage'
 import SDKPage from './pages/SDKPage'
+import CodeBlock from './components/CodeBlock'
+import EndpointTable from './components/EndpointTable'
 
 const NAV = [
   {
@@ -17,19 +16,11 @@ const NAV = [
     ]
   },
   {
-    group: 'API Reference',
-    items: [
-      { path: '/posts',    icon: '📝', label: 'Posts & Feed' },
-      { path: '/users',    icon: '👤', label: 'Users & Social' },
-      { path: '/messages', icon: '💬', label: 'Messages' },
-      { path: '/social',   icon: '🌐', label: 'Groups & Stories' },
-    ]
-  },
-  {
     group: 'Developer',
     items: [
       { path: '/oauth',    icon: '🔑', label: 'OAuth 2.0' },
-      { path: '/sharekit', icon: '📦', label: 'ShareKit & Embed' },
+      { path: '/sharekit', icon: '📦', label: 'Embed & Share' },
+      { path: '/webhooks', icon: '🔔', label: 'Webhooks' },
       { path: '/sdk',      icon: '⚡', label: 'SDK Examples' },
     ]
   }
@@ -37,13 +28,10 @@ const NAV = [
 
 const BREADCRUMBS = {
   '/':         ['Docs',      'Giới thiệu'],
-  '/posts':    ['API',       'Posts'],
-  '/users':    ['API',       'Users'],
-  '/messages': ['API',       'Messages'],
-  '/social':   ['API',       'Social'],
   '/oauth':    ['Developer', 'OAuth 2.0'],
-  '/sharekit': ['Developer', 'ShareKit'],
-  '/sdk':      ['Developer', 'SDK'],
+  '/sharekit': ['Developer', 'Embed & Share'],
+  '/webhooks': ['Developer', 'Webhooks'],
+  '/sdk':      ['Developer', 'SDK Examples'],
 }
 
 export default function App() {
@@ -53,34 +41,27 @@ export default function App() {
 
   const [section, title] = BREADCRUMBS[location.pathname] ?? ['Docs', '']
 
-  // Close sidebar on resize
   useEffect(() => {
     const handler = () => { if (window.innerWidth > 768) setSidebarOpen(false) }
     window.addEventListener('resize', handler)
     return () => window.removeEventListener('resize', handler)
   }, [])
 
-  // Scroll to top on route change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' })
   }, [location.pathname])
 
   const handleNav = () => setSidebarOpen(false)
 
-  // Helper passed to pages (e.g. HomePage quick links)
-  const goTo = (pageId) => {
-    navigate(pageId === 'home' ? '/' : `/${pageId}`)
-  }
+  const goTo = (path) => navigate(path)
 
   return (
     <div className="layout">
-      {/* Overlay */}
       <div
         className={`overlay${sidebarOpen ? ' open' : ''}`}
         onClick={() => setSidebarOpen(false)}
       />
 
-      {/* Sidebar */}
       <aside className={`sidebar${sidebarOpen ? ' open' : ''}`}>
         <NavLink to="/" className="sidebar-logo" onClick={handleNav} style={{textDecoration:'none'}}>
           <div className="logo-icon">✦</div>
@@ -126,9 +107,7 @@ export default function App() {
         </div>
       </aside>
 
-      {/* Main */}
       <main className="main">
-        {/* Top bar */}
         <div className="topbar">
           <div className="topbar-breadcrumb">
             <span style={{color:'var(--text3)'}}>Thazh</span>
@@ -144,22 +123,16 @@ export default function App() {
           </div>
         </div>
 
-        {/* Routes */}
         <Routes>
           <Route path="/"         element={<HomePage onNavigate={goTo} />} />
-          <Route path="/posts"    element={<PostsPage />} />
-          <Route path="/users"    element={<UsersPage />} />
-          <Route path="/messages" element={<MessagesPage />} />
-          <Route path="/social"   element={<SocialPage />} />
           <Route path="/oauth"    element={<OAuthPage />} />
           <Route path="/sharekit" element={<ShareKitPage />} />
+          <Route path="/webhooks" element={<WebhooksPage />} />
           <Route path="/sdk"      element={<SDKPage />} />
-          {/* Fallback: redirect về home */}
           <Route path="*"         element={<Navigate to="/" replace />} />
         </Routes>
       </main>
 
-      {/* Mobile toggle */}
       <button
         className="mobile-toggle"
         onClick={() => setSidebarOpen(o => !o)}
@@ -167,6 +140,81 @@ export default function App() {
       >
         {sidebarOpen ? '✕' : '☰'}
       </button>
+    </div>
+  )
+}
+
+// ── Webhooks Page ──────────────────────────────────────────────────────────
+
+const webhookEndpoints = [
+  { method: 'GET',  path: '/developer/webhooks', auth: false, desc: 'Danh sách webhooks (cần X-Developer-Key)' },
+  { method: 'POST', path: '/developer/webhooks', auth: false, desc: 'Tạo webhook mới' },
+]
+
+const WEBHOOK_EVENTS = [
+  { event: 'post.created',     desc: 'Bài viết mới được tạo' },
+  { event: 'post.deleted',     desc: 'Bài viết bị xóa' },
+  { event: 'follow.created',   desc: 'Có người theo dõi mới' },
+  { event: 'like.created',     desc: 'Bài viết được thích' },
+  { event: 'comment.created',  desc: 'Comment mới' },
+  { event: 'message.received', desc: 'Tin nhắn mới' },
+]
+
+const webhookBody = `POST /developer/webhooks
+X-Developer-Key: your_api_key
+{
+  "url": "https://yourapp.com/webhook",
+  "events": ["post.created", "like.created", "comment.created"]
+}`
+
+function WebhooksPage() {
+  return (
+    <div className="page">
+      <div className="page-header">
+        <h1 className="page-title">Webhooks</h1>
+        <p className="page-desc">
+          Nhận thông báo realtime khi có sự kiện trên nền tảng Thazh thông qua HTTP POST đến endpoint của bạn.
+        </p>
+        <div className="page-version">🔔 Webhooks · Realtime Events</div>
+      </div>
+
+      <div className="section">
+        <h2 className="section-title">Endpoints</h2>
+        <EndpointTable endpoints={webhookEndpoints} />
+        <div className="note">
+          <span className="note-icon">🔑</span>
+          <span>Webhooks yêu cầu header <code>X-Developer-Key: your_api_key</code> thay vì JWT token thông thường.</span>
+        </div>
+      </div>
+
+      <div className="section">
+        <h2 className="section-title">Tạo Webhook</h2>
+        <CodeBlock lang="json" title="POST /developer/webhooks" code={webhookBody} />
+      </div>
+
+      <div className="section">
+        <h2 className="section-title">Sự kiện hỗ trợ</h2>
+        <div className="webhook-events">
+          {WEBHOOK_EVENTS.map(ev => (
+            <div key={ev.event} className="webhook-event">
+              <code>{ev.event}</code>
+              <span className="webhook-event-desc">— {ev.desc}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="section">
+        <h2 className="section-title">Lưu ý</h2>
+        <div className="note green">
+          <span className="note-icon">⚡</span>
+          <span>Webhook gửi POST request đến <code>url</code> ngay khi sự kiện xảy ra. Endpoint của bạn cần trả về <code>200 OK</code> trong vòng <strong>5 giây</strong>.</span>
+        </div>
+        <div className="note blue">
+          <span className="note-icon">🔁</span>
+          <span>Nếu endpoint trả về lỗi hoặc timeout, Thazh sẽ retry tối đa <strong>3 lần</strong> với khoảng cách tăng dần.</span>
+        </div>
+      </div>
     </div>
   )
 }
