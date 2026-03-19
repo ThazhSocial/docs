@@ -5,5 +5,5 @@ import react from '@vitejs/plugin-react'
 // Change 'thazh-api-docs' to your actual repo name before deploying
 export default defineConfig({
   plugins: [react()],
-  base: '/thazh-api-docs/',
+  base: '/docs/',
 })
